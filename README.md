@@ -17,12 +17,6 @@ An unofficial asynchronous API wrapper for interacting with the Feeld dating app
 ### Installation
 
 ```bash
-pip install Feeld
-```
-
-Alternatively, clone the repository and install all dependencies:
-
-```bash
 git clone https://github.com/niewiemczego/Feeld.git
 cd feeld
 pip install -r requirements.txt
@@ -32,7 +26,6 @@ pip install -r requirements.txt
 
 - [ ] HTTP support
 - [ ] Websockets support
-- [ ] Sending video in chat 
 - [ ] Creating accounts module
 - [ ] SeonSDK fingerprint support (used during sign-up / sign-in)
 - [ ] Refreshing access token
