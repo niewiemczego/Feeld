@@ -38,7 +38,7 @@ For questions, suggestions or any feedback regarding the Feeld API Wrapper, plea
 
 - GitHub: Open an issue in the repository.
 - Telegram: @niewiemczego
-- Discord: niewiemczego#1234
+- Discord: niewiemczego
 
 > **Job Opportunities:** I am actively looking for a Python developer position. If you have any relevant opportunities, please reach out to me via the contact methods above.
 
