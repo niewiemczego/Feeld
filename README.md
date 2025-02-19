@@ -24,9 +24,9 @@ pip install -r requirements.txt
 
 ## TODO
 
-- [ ] HTTP support
+- [X] HTTP support
 - [ ] Websockets support
-- [ ] Creating accounts module
+- [ ] Creating accounts module ( related to the one below)
 - [ ] SeonSDK fingerprint support (used during sign-up / sign-in)
 - [ ] Refreshing access token
 - [ ] Chat Manager
