@@ -26,12 +26,13 @@ pip install -r requirements.txt
 
 - [X] HTTP support
 - [ ] Websockets support
-- [ ] Creating accounts module ( related to the one below)
+- [ ] Creating(sign-up) accounts module (related to SeonSDK)
+- [ ] Login(sign-in) possibility with email and password (related to SeonSDK)
 - [ ] SeonSDK fingerprint support (used during sign-up / sign-in)
-- [ ] Refreshing access token
+- [X] Refreshing access token automatically
 - [ ] Chat Manager
 - [ ] Profile Manager
-- [ ] Swipes/Likes/Matches
+- [ ] (Swipes/Likes/Matches) Manager
 
 ## Contact
 For questions, suggestions or any feedback regarding the Feeld API Wrapper, please use one of the following methods:
