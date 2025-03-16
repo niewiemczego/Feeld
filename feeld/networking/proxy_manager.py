@@ -1,5 +1,5 @@
 import random
-from typing import Any, Generator
+from typing import Generator
 
 
 class ProxyManager:
@@ -39,7 +39,7 @@ class ProxyManager:
     def _create_proxy_dict(self, formatted_proxy: str) -> dict[str, str]:
         return {"http": f"http://{formatted_proxy}", "https": f"http://{formatted_proxy}"}
 
-    def _get_proxy(self) -> Generator[dict[str, str], Any, None]:
+    def _get_proxy(self) -> Generator[dict[str, str], None]:
         for proxy in self.proxies:
             yield proxy
 

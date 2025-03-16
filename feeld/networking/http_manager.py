@@ -13,9 +13,9 @@ from feeld.networking import ProxyManager
 class HTTPManager:
     _BASE_API_URL = "https://core.api.fldcore.com/graphql"
     _BASE_CHAT_URL = "https://chat.stream-io-api.com"
+    _logger = logging.getLogger(__name__)
 
     def __init__(self, proxy_manager: ProxyManager | None = None) -> None:
-        self.logger = logging.getLogger(__name__)
         self._proxy_manager = proxy_manager
         self._session = noble_tls.Session(client=Client.CHROME_131, random_tls_extension_order=True)
         self._access_token: str | None = None
@@ -30,7 +30,7 @@ class HTTPManager:
             "x-profile-id": self._profile_id,
             "x-device-os": "ios",
             "user-agent": "feeld-mobile",
-            "x-app-version": "7.18.0",
+            "x-app-version": "7.23.0",
         }
         self._default_headers_chat = {
             "accept-language": "en-GB,en;q=0.9",
@@ -48,9 +48,9 @@ class HTTPManager:
 
     @access_token.setter
     def access_token(self, value: str) -> None:
-        token = value[7:] if value.startswith("Bearer ") else value
+        token = value.removeprefix("Bearer ")
         self._access_token = token
-        self._default_headers["authorization"] = f"Bearer {value}"
+        self._default_headers["authorization"] = f"Bearer {token}"
 
     @property
     def refresh_token(self) -> str | None:
@@ -85,14 +85,14 @@ class HTTPManager:
             response = await self._session.execute_request(method, url, headers=headers, timeout_seconds=45, **kwargs)
 
             if self._is_token_expired(response):
-                self.logger.info("Access token expired, attempting token refresh.")
+                self._logger.info("Access token expired, attempting token refresh.")
                 if self.refresh_token is None:
-                    self.logger.error("No refresh token set.")
+                    self._logger.error("No refresh token set.")
                     return None
 
                 new_token = await self.refresh_access_token(self.refresh_token)
                 if new_token is None:
-                    self.logger.error("Token refresh failed.")
+                    self._logger.error("Token refresh failed.")
                     return None
 
                 self.access_token = new_token.id_token
@@ -103,7 +103,7 @@ class HTTPManager:
 
             return response
         except Exception as e:
-            print(f"Failed to make request: {e}")
+            self._logger.error(f"Failed to make request: {e}")
         return None
 
     def _is_token_expired(self, response: Response) -> bool:
@@ -116,7 +116,7 @@ class HTTPManager:
                 error_str = str(data)
                 return "token_expired" in error_str or "The access token expired" in error_str
         except Exception as e:
-            self.logger.error(f"Error parsing response JSON: {e}")
+            self._logger.error(f"Error parsing response JSON: {e}")
         return False
 
     async def refresh_access_token(self, refresh_token: str) -> SignInResponse | None:
@@ -141,25 +141,16 @@ class HTTPManager:
         )
 
         if response is None:
-            self.logger.error("No response received during token refresh.")
+            self._logger.error("No response received during token refresh.")
             return None
 
         if response.status_code != 200:
-            self.logger.error("Failed to refresh token: status %s", response.status_code)
+            self._logger.error("Failed to refresh token: status %s", response.status_code)
             return None
 
         res_json = response.json()
         if "errors" in res_json:
-            self.logger.error(f"Errors in token refresh response: {res_json}")
+            self._logger.error(f"Errors in token refresh response: {res_json}")
             return None
 
         return SignInResponse.parse_response(res_json)
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    http_manager = HTTPManager()
-
-    res = asyncio.run(http_manager.get_ip_timezone())
-    print(res)
