@@ -112,9 +112,10 @@ class HTTPManager:
         """
         try:
             data = response.json()
-            if "errors" in data:
-                error_str = str(data)
-                return "token_expired" in error_str or "The access token expired" in error_str
+            return (
+                data.get("errors", {}).get("extensions", {}).get("originalError", {}).get("statusCode")
+                or "unauthorized" in response.text.lower()
+            )
         except Exception as e:
             self._logger.error(f"Error parsing response JSON: {e}")
         return False
