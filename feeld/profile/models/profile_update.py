@@ -1,22 +1,59 @@
 from datetime import datetime
 from typing import Any
 
+from pydantic import field_validator
+
 from feeld.models.base import BaseResponse, InnerResponse
 from feeld.models.desires import DesiresType
 from feeld.models.gender import GenderType
-from feeld.models.looking_for import LookingForType
 from feeld.models.sexuality import SexualityType
 
 
 class ProfileUpdatePayload(InnerResponse):
     gender: GenderType | None = None
     desires: list[DesiresType] | None = None
-    looking_for: list[LookingForType] | None = None
     sexuality: SexualityType | None = None
     imaginary_name: str | None = None
     date_of_birth: str | None = None
     bio: str | None = None
     interests: list[str] | None = None
+
+    @field_validator("desires")
+    @classmethod
+    def check_if_desires_are_valid(cls, v):
+        if len(v) > 10:
+            raise ValueError("Too many desires")
+
+        return v
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def check_if_date_of_birth_is_valid(cls, v):
+        try:
+            datetime.strptime(v, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("Invalid date of birth, should be in format 'YYYY-MM-DD'")
+
+        return v
+
+    @field_validator("bio")
+    @classmethod
+    def check_if_bio_is_valid(cls, v):
+        if len(v) > 1500:
+            raise ValueError("Bio cannot exceed 1500 characters")
+
+        return v
+
+    @field_validator("interests")
+    @classmethod
+    def check_if_interests_are_valid(cls, v):
+        if not all([len(interest) <= 15 for interest in v]):
+            raise ValueError("Intersts cannot exceeed 15 characters")
+
+        if len(v) > 10:
+            raise ValueError("Too many interests")
+
+        return v
 
     def _to_camel_case(self, snake_str: str) -> str:
         components = snake_str.split("_")
@@ -133,12 +170,11 @@ if __name__ == "__main__":
     print(ProfileUpdateResponse.parse_response(payload))
 
     test = ProfileUpdatePayload(
-        gender="test",
-        desires=["test"],
-        looking_for=["test"],
-        sexuality="test",
+        gender="MAN",
+        desires=["FWB"],
+        sexuality="STRAIGHT",
         imaginary_name="test",
-        date_of_birth="test",
+        date_of_birth="2000-12-31",
         bio="test",
     )
     print(test.get_input_payload())
