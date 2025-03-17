@@ -7,7 +7,7 @@ from noble_tls import Client
 from noble_tls.response import Response
 
 from feeld.models import SignInResponse
-from feeld.networking import ProxyManager
+from feeld.networking.proxy_manager import ProxyManager
 
 
 class HTTPManager:
