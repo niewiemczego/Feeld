@@ -37,7 +37,7 @@ class Profile(InnerResponse):
     age: int | None = None
     age_range: list[int | None] | None = None
     desires: list[DesiresType] | None = None
-    desiring_for: str | None = None
+    desiring_for: list[DesiresType] | str | None = None
     analytics_id: str | None = None
     distance_max: int | None = None
     is_uplift: bool | None = None
