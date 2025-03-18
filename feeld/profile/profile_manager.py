@@ -10,7 +10,7 @@ from feeld.profile.models.profile_update import ProfileUpdatePayload, ProfileUpd
 class ProfileManager:
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, http_manager: HTTPManager):
+    def __init__(self, http_manager: HTTPManager) -> None:
         self._http_manager = http_manager
 
     async def get_profile_data(self) -> AuthProviderResponse | None:
@@ -26,8 +26,8 @@ class ProfileManager:
         if res is None:
             return None
 
-        self._logger.info(res.text)
-        self._logger.info(res.status_code)
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
         if res.status_code != 200 or "errors" in res.json():
             self._logger.error(f"Failed to get profile data - Unknown error[{res.status_code}]")
             return None
@@ -40,6 +40,9 @@ class ProfileManager:
         longitude: float | None = None,
         popular_location: PopularLocation | None = None,
     ) -> ProfileLocationUpdateResponse | None:
+        """
+        You need to provide either latitude and longitude or popular_location
+        """
         if not latitude and not longitude and not popular_location:
             self._logger.error("Failed to update profile location - No location provided")
             return None
@@ -75,8 +78,8 @@ class ProfileManager:
         if res is None:
             return None
 
-        self._logger.info(res.text)
-        self._logger.info(res.status_code)
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
         if res.status_code != 200 or "errors" in res.json():
             self._logger.error(f"Failed to update profile location - Unknown error[{res.status_code}]")
             return None
@@ -96,8 +99,8 @@ class ProfileManager:
         if res is None:
             return None
 
-        self._logger.info(res.text)
-        self._logger.info(res.status_code)
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
         if res.status_code != 200 or "errors" in res.json():
             self._logger.error(f"Failed to update profile - Unknown error[{res.status_code}]")
             return None
