@@ -1,1 +1,2 @@
+from .models import ProfileLocationUpdateResponse, ProfileUpdatePayload, ProfileUpdateResponse
 from .profile_manager import ProfileManager
