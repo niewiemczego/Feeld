@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 - [X] HTTP(s) support
 - [X] Proxy Manager
-- [ ] Rotating proxy automatically
+- [X] Rotating proxy automatically
 - [ ] Creating(sign-up) accounts module (related to SeonSDK)
 - [ ] Login(sign-in) possibility with email and password (related to SeonSDK)
 - [ ] SeonSDK fingerprint support (used during sign-up / sign-in)
