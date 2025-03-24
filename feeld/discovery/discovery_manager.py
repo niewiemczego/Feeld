@@ -273,3 +273,48 @@ class DiscoveryManager:
             return False
 
         return True
+
+    async def block_user(self, profile_id: str) -> bool:
+        payload = {
+            "operationName": "ProfileBlock",
+            "variables": {
+                "input": {
+                    "blockCategory": "NOT_INTERESTED",
+                    "blockDetail": "",
+                    "targetProfileId": profile_id,
+                }
+            },
+            "query": "mutation ProfileBlock($input: ProfileBlockInteractionInput!) {\n  profileBlock(input: $input)\n}",
+        }
+
+        res = await self._http_manager._request(
+            "POST", self._http_manager._BASE_API_URL, self._http_manager._default_headers, json=payload
+        )
+        if res is None:
+            return False
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to block user - Unknown error[{res.status_code}]")
+            return False
+
+        return True
+
+
+if __name__ == "__main__":
+    import asyncio
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    http_manager = HTTPManager()
+    http_manager.access_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImEwODA2N2Q4M2YwY2Y5YzcxNjQyNjUwYzUyMWQ0ZWZhNWI2YTNlMDkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZjItcHJvZC01MzQ3NSIsImF1ZCI6ImYyLXByb2QtNTM0NzUiLCJhdXRoX3RpbWUiOjE3NDIxNTg2NjUsInVzZXJfaWQiOiJkclhTVnQ5Vm40YUpNaEV4ZVNYcGE5MldDNzcyIiwic3ViIjoiZHJYU1Z0OVZuNGFKTWhFeGVTWHBhOTJXQzc3MiIsImlhdCI6MTc0MjIzNDQ0MCwiZXhwIjoxNzQyMjM4MDQwLCJlbWFpbCI6ImpqZXJ6eWp1cmtvd3NraUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJqamVyenlqdXJrb3dza2lAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.b-ytvjrS2w76hkO3V8c0NWJlRDLui8sqx5LOiXE-yP5kpvezwXbdhBLl5VDVaeRPbtkNEUH63l-ePGRFAce4TdvI6CVPnMwla2jRE5qsfN63P-AsMV_Nn8xKDNxlrawHuxxuGfKTkRleZ8tIZ9I6PNMdvQ6Xl0nVTYIL3-AuoExOFZFOGFQ12Ng4Um_ocInMK2f2ZUlwV_kKMLu3PqOjNhd0laAP-C_dYgUSeo1PcyryzGOiYNA8gmegVSG8usXxNOllzqwdPpLnZ1O1lybIS3EbLIYFaaQrmyQNSGKIO0W1iHTdQ-3PC-w4bbOm7kX_uPmdPAkq5dJA5A4BSRTz3g"
+    http_manager.profile_id = "profile#3cbb7903-0289-466d-a6d8-0447dfed1021"
+
+    profile_manager = DiscoveryManager(http_manager)
+
+    async def main() -> None:
+        profile_data = await profile_manager.update_search_settings([18, None])
+
+    asyncio.run(main())
