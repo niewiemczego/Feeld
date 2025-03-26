@@ -1,5 +1,8 @@
 import logging
 from typing import Any
+from uuid import uuid4
+
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from feeld.chat.models.chat_create import ChatCreateResponse
 from feeld.chat.models.chat_summaries import ChatSummariesResponse
@@ -9,8 +12,9 @@ from feeld.networking.http_manager import HTTPManager
 class ChatManager:
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, http_manager: HTTPManager) -> None:
+    def __init__(self, http_manager: HTTPManager, stream_id: str) -> None:
         self._http_manager = http_manager
+        self._stream_id = stream_id
 
     async def get_chat_summaries(
         self, limit: int = 10, next_page_cursor: str | None = None
@@ -96,6 +100,71 @@ class ChatManager:
         self._logger.debug(res.status_code)
         if res.status_code != 200 or "errors" in res.json():
             self._logger.error(f"Failed to create chat - Unknown error[{res.status_code}]")
+            return None
+
+        return res.json()
+
+    async def get_connection_id(self) -> str | None:
+        res = await self._http_manager._request(
+            "GET",
+            f"{self._http_manager._BASE_CHAT_URL}/longpoll?user_id={self._stream_id}&api_key=y4tp4akjeb49&json=%7B%22user_id%22%3A%22{self._stream_id}%22%2C%22user_details%22%3A%7B%22id%22%3A%22{self._stream_id}%22%7D%7D",
+            headers=self._http_manager._default_headers_chat,
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to get connection id - Unknown error[{res.status_code}]")
+            return None
+
+        return res.json().get("event", {}).get("connection_id")
+
+    async def get_messages_history(
+        self, user_stream_channel_id: str, connection_id: str
+    ) -> list[dict[str, Any]] | None:
+        payload = {"data": {}, "state": True, "watch": True, "presence": False, "messages": {"limit": 50}}
+        res = await self._http_manager._request(
+            "POST",
+            f"{self._http_manager._BASE_CHAT_URL}/channels/messaging/{user_stream_channel_id}/query?user_id={self._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
+            headers=self._http_manager._default_headers_chat,
+            json=payload,
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 201 or "errors" in res.json():
+            self._logger.error(f"Failed to get messsages history - Unknown error[{res.status_code}]")
+            return None
+
+        return res.json().get("messages")
+
+    async def create_picture(self, public_id: str, picture_order: int, is_secondary: bool) -> dict[str, Any] | None:
+        payload = {
+            "operationName": "PictureCreate",
+            "variables": {
+                "input": {
+                    "profileId": self._http_manager.profile_id,
+                    "publicId": public_id,
+                    "pictureType": "SECONDARY" if is_secondary else "DEFAULT",
+                    "pictureOrder": picture_order,
+                }
+            },
+            "query": "mutation PictureCreate($input: PictureCreateInput!) {\n  pictureCreate(input: $input) {\n    ...PictureCreateFragment\n    __typename\n  }\n}\n\nfragment PictureCreateFragment on Picture {\n  id\n  pictureIsPrivate\n  pictureIsSafe\n  pictureOrder\n  pictureScore\n  pictureStatus\n  pictureType\n  pictureUrl\n  profileId\n  publicId\n  __typename\n}",
+        }
+        res = await self._http_manager._request(
+            "POST", self._http_manager._BASE_API_URL, headers=self._http_manager._default_headers, json=payload
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to create picture - Unknown error[{res.status_code}]")
             return None
 
         return res.json()
