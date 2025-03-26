@@ -122,9 +122,9 @@ class ChatManager:
         return res.json().get("event", {}).get("connection_id")
 
     async def get_messages_history(
-        self, user_stream_channel_id: str, connection_id: str
+        self, user_stream_channel_id: str, connection_id: str, limit: int = 50
     ) -> list[dict[str, Any]] | None:
-        payload = {"data": {}, "state": True, "watch": True, "presence": False, "messages": {"limit": 50}}
+        payload = {"data": {}, "state": True, "watch": True, "presence": False, "messages": {"limit": limit}}
         res = await self._http_manager._request(
             "POST",
             f"{self._http_manager._BASE_CHAT_URL}/channels/messaging/{user_stream_channel_id}/query?user_id={self._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
