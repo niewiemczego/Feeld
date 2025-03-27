@@ -6,6 +6,8 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from feeld.chat.models.chat_create import ChatCreateResponse
 from feeld.chat.models.chat_summaries import ChatSummariesResponse
+from feeld.chat.models.generate_upload_credentials import GenerateUploadCredentialsResponse
+from feeld.chat.models.upload_chat_attachment import UploadChatAttachmentResponse
 from feeld.networking.http_manager import HTTPManager
 
 
@@ -168,3 +170,86 @@ class ChatManager:
             return None
 
         return res.json()
+
+    async def generate_upload_credentials_for_attachment(self) -> GenerateUploadCredentialsResponse | None:
+        payload = {
+            "operationName": "CloudinaryGenerateUploadCredentials",
+            "variables": {},
+            "query": "mutation CloudinaryGenerateUploadCredentials {\n  cloudinaryGenerateUploadCredentials {\n    publicId\n    signature\n    timestamp\n    __typename\n  }\n}",
+        }
+        res = await self._http_manager._request(
+            "POST", self._http_manager._BASE_API_URL, headers=self._http_manager._default_headers, json=payload
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to generate upload credentials - Unknown error[{res.status_code}]")
+            return None
+
+        return GenerateUploadCredentialsResponse.parse_response(res.json())
+
+    async def upload_attachment(
+        self, upload_credentials: GenerateUploadCredentialsResponse, image_path: str, image_type: str = "image/jpg"
+    ) -> dict[str, Any] | None:
+        mp_encoder = MultipartEncoder(
+            fields={
+                "api_key": "578158198623524",
+                "timestamp": str(upload_credentials.data.timestamp),
+                "public_id": upload_credentials.data.public_id,
+                "signature": upload_credentials.data.signature,
+                "file": (image_path.split("/")[-1], open(image_path, "rb"), image_type),
+            }
+        )
+        # Since we are uplading image to cloudinary server we dont need to use proxy and that way we save a lot of proxy data
+        proxy = self._http_manager._session.proxies.copy()
+        self._http_manager._session.proxies = {}
+
+        res = await self._http_manager._request(
+            "POST",
+            "https://api.cloudinary.com/v1_1/threender/upload",
+            data=mp_encoder.to_string(),
+            headers={"Content-Type": mp_encoder.content_type},
+        )
+        self._http_manager._session.proxies = proxy
+
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to upload attachment - Unknown error[{res.status_code}]")
+            return None
+
+        return res.json()
+
+    async def upload_attachment_to_chat(self, chat_id: str, public_id: str) -> UploadChatAttachmentResponse | None:
+        payload = {
+            "operationName": "UploadChatAttachment",
+            "variables": {
+                "input": {
+                    "chatID": chat_id,
+                    "creatorID": self._http_manager.profile_id,
+                    "providerAssetID": public_id,
+                    "providerSource": "Cloudinary",
+                    "visibilityMilliseconds": None,
+                }
+            },
+            "query": "mutation UploadChatAttachment($input: GQLChatAttachmentUploadInput!) {\n  uploadChatAttachment(input: $input) {\n    attachmentID\n    chatID\n    createdAt\n    creatorID\n    providerAssetID\n    providerSource\n    updatedAt\n    visibilityMilliseconds\n    __typename\n  }\n}",
+        }
+        res = await self._http_manager._request(
+            "POST", self._http_manager._BASE_API_URL, headers=self._http_manager._default_headers, json=payload
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            print(f"Failed to upload attachment to chat - Unknown error[{res.status_code}]")
+            return None
+
+        return UploadChatAttachmentResponse.parse_response(res.json())
