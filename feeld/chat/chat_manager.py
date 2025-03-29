@@ -5,6 +5,7 @@ from uuid import uuid4
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from feeld.chat.models.chat_create import ChatCreateResponse
+from feeld.chat.models.chat_message import ChatMessage
 from feeld.chat.models.chat_summaries import ChatSummariesResponse
 from feeld.chat.models.generate_upload_credentials import GenerateUploadCredentialsResponse
 from feeld.chat.models.upload_chat_attachment import UploadChatAttachmentResponse
@@ -226,7 +227,9 @@ class ChatManager:
 
         return res.json()
 
-    async def upload_attachment_to_chat(self, chat_id: str, public_id: str) -> UploadChatAttachmentResponse | None:
+    async def upload_attachment_to_chat(
+        self, chat_id: str, public_id: str, visibility_in_ms: int | None = None
+    ) -> UploadChatAttachmentResponse | None:
         payload = {
             "operationName": "UploadChatAttachment",
             "variables": {
@@ -235,7 +238,7 @@ class ChatManager:
                     "creatorID": self._http_manager.profile_id,
                     "providerAssetID": public_id,
                     "providerSource": "Cloudinary",
-                    "visibilityMilliseconds": None,
+                    "visibilityMilliseconds": visibility_in_ms,
                 }
             },
             "query": "mutation UploadChatAttachment($input: GQLChatAttachmentUploadInput!) {\n  uploadChatAttachment(input: $input) {\n    attachmentID\n    chatID\n    createdAt\n    creatorID\n    providerAssetID\n    providerSource\n    updatedAt\n    visibilityMilliseconds\n    __typename\n  }\n}",
@@ -253,3 +256,52 @@ class ChatManager:
             return None
 
         return UploadChatAttachmentResponse.parse_response(res.json())
+
+    async def send_message_to_chat(
+        self, user_stream_channel_id: str, connection_id: str, message: ChatMessage
+    ) -> dict[str, Any] | None:
+        res = await self._http_manager._request(
+            "POST",
+            f"https://chat.stream-io-api.com/channels/messaging/{user_stream_channel_id}/message?user_id={self._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
+            headers=self._http_manager._default_headers_chat,
+            json=message.to_payload_dict(),
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 201:
+            self._logger.error(f"Failed to send message to chat - Unknown error[{res.status_code}]")
+            return None
+
+        return res.json()
+
+    async def upload_image(
+        self, image_path: str, user_stream_channel_id: str, chat_id: str, connection_id: str, message: str
+    ) -> bool:
+        credentials = await self.generate_upload_credentials_for_attachment()
+        if credentials is None:
+            return False
+
+        upload_attachment_data = await self.upload_attachment(
+            credentials,
+            image_path,
+        )
+        if upload_attachment_data is None:
+            return False
+
+        upload_to_chat = await self.upload_attachment_to_chat(chat_id, credentials.data.public_id)
+        if upload_to_chat is None:
+            return False
+
+        send_chat_message = await self.send_message_to_chat(
+            user_stream_channel_id,
+            connection_id,
+            message,
+            upload_to_chat.data.attachment_id,
+        )
+        if send_chat_message is None:
+            return False
+
+        return True
