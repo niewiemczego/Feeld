@@ -108,6 +108,9 @@ class ChatManager:
         return res.json()
 
     async def get_connection_id(self) -> str | None:
+        """
+        Gets the connection id needed for the chat related requests
+        """
         res = await self._http_manager._request(
             "GET",
             f"{self._http_manager._BASE_CHAT_URL}/longpoll?user_id={self._stream_id}&api_key=y4tp4akjeb49&json=%7B%22user_id%22%3A%22{self._stream_id}%22%2C%22user_details%22%3A%7B%22id%22%3A%22{self._stream_id}%22%7D%7D",
@@ -258,7 +261,7 @@ class ChatManager:
         return UploadChatAttachmentResponse.parse_response(res.json())
 
     async def send_text_message(self, user_stream_channel_id: str, connection_id: str, message: TextMessage) -> bool:
-        res = await manager._send_message_to_chat(user_stream_channel_id, connection_id, message)
+        res = await self._send_message_to_chat(user_stream_channel_id, connection_id, message)
         if res is None:
             return False
 
@@ -274,7 +277,7 @@ class ChatManager:
 
         message.attachment_id = upload_image_data.data.attachment_id
 
-        res = await manager._send_message_to_chat(user_stream_channel_id, connection_id, message)
+        res = await self._send_message_to_chat(user_stream_channel_id, connection_id, message)
         if res is None:
             return False
 
@@ -300,7 +303,7 @@ class ChatManager:
     async def send_video_message(
         self, user_stream_channel_id: str, connection_id: str, video_path: str, message: VideoMessage
     ) -> dict[str, Any] | None:
-        url = await manager.upload_video(user_stream_channel_id, connection_id, video_path)
+        url = await self.upload_video(user_stream_channel_id, connection_id, video_path)
         if url is None:
             return
 
@@ -309,7 +312,7 @@ class ChatManager:
         message.url = url
         message.duration = video_duration
 
-        return await manager._send_message_to_chat(user_stream_channel_id, connection_id, message)
+        return await self._send_message_to_chat(user_stream_channel_id, connection_id, message)
 
     async def upload_video(self, user_stream_channel_id: str, connection_id: str, video_path: str) -> str | None:
         mp_encoder = MultipartEncoder(
@@ -353,44 +356,3 @@ class ChatManager:
             return None
 
         return res.json()
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    http_manager = HTTPManager()
-
-    http_manager.access_token = "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImE5ZGRjYTc2YzEyMzMyNmI5ZTJlODJkOGFjNDg0MWU1MzMyMmI3NmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZjItcHJvZC01MzQ3NSIsImF1ZCI6ImYyLXByb2QtNTM0NzUiLCJhdXRoX3RpbWUiOjE3NDI4MzkzNTAsInVzZXJfaWQiOiJpVEh1SEwwbkVmVHFEYlBCZXRIdk1Sd0U0aGoyIiwic3ViIjoiaVRIdUhMMG5FZlRxRGJQQmV0SHZNUndFNGhqMiIsImlhdCI6MTc0MzQxNjYxMiwiZXhwIjoxNzQzNDIwMjEyLCJlbWFpbCI6ImouamVyenlqdXJrb3dza2lAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZW1haWwiOlsiai5qZXJ6eWp1cmtvd3NraUBnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJwYXNzd29yZCJ9fQ.ThibQUL0v44bx6gLfRk3wLgkTtia0z04E1Kp6AALv7KbOLqC-rMABomVi4FdZ4eBvFwiePx6JeFElP7cYy6Gg9iIf7wjeU8FLChTlCN8Gx7wye3kNwHXP6nZb8tqZ3V3QrNXpbOvPyIMj2RGIKsZzH5uDBMVPIVcY1eeRQsKOU1clp6NEOIgU3cXFvIaQlS8cNWj1HT3LRB6oL87wAVFztQTuI5laFEVjoh0aFoeYciETA0f57Vlg5dI8kTKjnx41zKqWhZ-UN1SuIcJNlnI9v-VO3ylu-QdOH74zscgcr9jdlsWg-5-8qjAv4tWHqN78J-frXluhHLVTUkp3BAmNg"
-    http_manager.profile_id = "profile#bbaf281f-f77b-41a1-932c-1e150df54692"
-
-    http_manager._default_headers_chat["authorization"] = (
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjdjYjZjNTMtMjFjYi00ZDQ3LTgzMzQtMWZhYWZhOGNkMjNhIn0._wAQnIVLD0rkXctKNxPEGufuEk4HhaUCM0YqCU9tv6I"
-    )
-
-    manager = ChatManager(http_manager, "27cb6c53-21cb-4d47-8334-1faafa8cd23a")
-
-    async def main():
-        connection_id = "67d956a9-0a05-1177-0100-000003e40600"
-        # res = await manager.send_video_message(
-        # "0b3b1ea2-dec2-42c4-8542-cac9cbec0210",
-        # connection_id,
-        #     "test_video_long.mov",
-        #     VideoMessage("u see me?", "view_once"),
-        # )
-        # print(res)
-        # res = await manager.send_image_message(
-        #     "0b3b1ea2-dec2-42c4-8542-cac9cbec0210",
-        #     connection_id,
-        #     "test_image.png",
-        #     "chat#3faefefe-af2d-49f3-bd27-93a52182a78e",
-        #     ImageMessage("Hey cutie", "view_once", 10),
-        # )
-        # print(res)
-        res = await manager.send_text_message(
-            "0b3b1ea2-dec2-42c4-8542-cac9cbec0210",
-            connection_id,
-            TextMessage("Hey cutie"),
-        )
-        print(res)
-
-    asyncio.run(main())
