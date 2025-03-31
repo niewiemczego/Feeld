@@ -14,7 +14,7 @@ class UploadData(InnerResponse):
     provider_asset_id: str | None = Field(default=None, alias="providerAssetID")
     provider_source: str | None = None
     updated_at: datetime | None = None
-    visibility_milliseconds: str | None = None
+    visibility_milliseconds: int | None = None
 
 
 class UploadChatAttachmentResponse(BaseResponse):

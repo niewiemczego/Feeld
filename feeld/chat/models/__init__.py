@@ -1,3 +1,6 @@
 from .chat_create import ChatCreateResponse
+from .chat_message import ImageMessage, TextMessage, VideoMessage
 from .chat_summaries import ChatSummariesResponse
 from .chat_summary import ChatSummaryResponse
+from .generate_upload_credentials import GenerateUploadCredentialsResponse
+from .upload_chat_attachment import UploadChatAttachmentResponse
