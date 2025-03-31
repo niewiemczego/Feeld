@@ -1,2 +1,3 @@
+from .analytics_query import AnalyticsResponse
 from .profile_location_update import ProfileLocationUpdateResponse
 from .profile_update import ProfileUpdatePayload, ProfileUpdateResponse
