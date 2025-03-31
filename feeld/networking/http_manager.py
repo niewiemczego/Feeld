@@ -6,7 +6,7 @@ import noble_tls
 from noble_tls import Client
 from noble_tls.response import Response
 
-from feeld.models import SignInResponse
+from feeld.models import AuthProviderResponse, SignInResponse
 from feeld.networking.proxy_manager import ProxyManager
 
 
@@ -15,13 +15,14 @@ class HTTPManager:
     _BASE_CHAT_URL = "https://chat.stream-io-api.com"
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, proxy_manager: ProxyManager | None = None) -> None:
+    def __init__(self, proxy_manager: ProxyManager | None = None, refresh_token: str | None = None) -> None:
         self._proxy_manager = proxy_manager
         self._session = noble_tls.Session(client=Client.CHROME_131, random_tls_extension_order=True)
         self._access_token: str | None = None
-        self._refresh_token: str | None = None
+        self._refresh_token: str | None = refresh_token
         self._profile_id: str | None = None
         self._stream_token: str | None = None
+        self._stream_id: str | None = None
         self._default_headers = {
             "accept": "*/*",
             "accept-language": "en-GB,en;q=0.9",
@@ -39,7 +40,7 @@ class HTTPManager:
             "accept": "application/json, text/plain, */*",
             "stream-auth-type": "jwt",
             "x-stream-client": "stream-chat-react-native-ios-5.32.1",
-            "user-agent": "Feeld/1429 CFNetwork/1390 Darwin/22.0.0",
+            "user-agent": "Feeld/1490 CFNetwork/1390 Darwin/22.0.0",
         }
 
     @property
@@ -51,14 +52,6 @@ class HTTPManager:
         token = value.removeprefix("Bearer ")
         self._access_token = token
         self._default_headers["authorization"] = f"Bearer {token}"
-
-    @property
-    def refresh_token(self) -> str | None:
-        return self._refresh_token
-
-    @refresh_token.setter
-    def refresh_token(self, value: str) -> None:
-        self._refresh_token = value
 
     @property
     def profile_id(self) -> str | None:
@@ -77,48 +70,6 @@ class HTTPManager:
     def stream_token(self, value: str) -> None:
         self._stream_token = value
         self._default_headers_chat["authorization"] = value
-
-    async def _request(
-        self, method: Literal["GET", "POST", "PUT", "DELETE"], url: str, headers: dict[str, Any], **kwargs
-    ) -> Response | None:
-        try:
-            response = await self._session.execute_request(method, url, headers=headers, timeout_seconds=45, **kwargs)
-
-            if self._is_token_expired(response):
-                self._logger.info("Access token expired, attempting token refresh.")
-                if self.refresh_token is None:
-                    self._logger.error("No refresh token set.")
-                    return None
-
-                new_token = await self.refresh_access_token(self.refresh_token)
-                if new_token is None:
-                    self._logger.error("Token refresh failed.")
-                    return None
-
-                self.access_token = new_token.id_token
-                headers.update({"authorization": self.access_token})
-                response = await self._session.execute_request(
-                    method, url, headers=headers, timeout_seconds=45, **kwargs
-                )
-
-            return response
-        except Exception as e:
-            self._logger.error(f"Failed to make request: {e}")
-        return None
-
-    def _is_token_expired(self, response: Response) -> bool:
-        """
-        Determines if the response JSON contains a token expiration error.
-        """
-        try:
-            data = response.json()
-            return (
-                data.get("errors", {}).get("extensions", {}).get("originalError", {}).get("statusCode")
-                or "unauthorized" in response.text.lower()
-            )
-        except Exception as e:
-            self._logger.error(f"Error parsing response JSON: {e}")
-        return False
 
     async def refresh_access_token(self, refresh_token: str) -> SignInResponse | None:
         payload = {
@@ -155,3 +106,63 @@ class HTTPManager:
             return None
 
         return SignInResponse.parse_response(res_json)
+
+    def _set_profile_data(self, profile_data: AuthProviderResponse) -> bool:
+        """
+        Sets profile data from an authentication provider response such as `profile_id`, `stream_token`, and `stream_id`.
+        """
+        if profile_data.account is None:
+            self._logger.error("Failed to get account data")
+            return False
+
+        try:
+            self.profile_id = profile_data.account.profiles[0].id
+            self.stream_token = profile_data.account.profiles[0].stream_token
+            self.stream_id = profile_data.account.profiles[0].stream_user_id
+            return True
+        except (KeyError, IndexError):
+            return False
+
+    async def _request(
+        self, method: Literal["GET", "POST", "PUT", "DELETE"], url: str, headers: dict[str, Any], **kwargs
+    ) -> Response | None:
+        try:
+            response = await self._session.execute_request(method, url, headers=headers, timeout_seconds=45, **kwargs)
+
+            if self._is_token_expired(response):
+                self._logger.info("Access token expired, attempting token refresh.")
+                self._logger.debug(f"Response: {response.text}")
+                if self._refresh_token is None:
+                    self._logger.error("No refresh token set.")
+                    return None
+
+                new_token = await self.refresh_access_token(self._refresh_token)
+                if new_token is None:
+                    self._logger.error("Token refresh failed.")
+                    return None
+
+                self.access_token = new_token.id_token
+                headers.update({"authorization": f"Bearer {self.access_token}"})
+                response = await self._session.execute_request(
+                    method, url, headers=headers, timeout_seconds=45, **kwargs
+                )
+
+            return response
+        except Exception as e:
+            self._logger.error(f"Failed to make request: {e}")
+        return None
+
+    def _is_token_expired(self, response: Response) -> bool:
+        """
+        Determines if the response JSON contains a token expiration error.
+        """
+        try:
+            data = response.json()
+            return (
+                data.get("errors", [{}])[0].get("extensions", {}).get("originalError", {}).get("statusCode") == 401
+                or "unauthorized" in response.text.lower()
+                or "token_missing" in response.text.lower()
+            )
+        except Exception as e:
+            self._logger.error(f"Error parsing response JSON: {e}")
+        return False
