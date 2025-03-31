@@ -1,2 +1,2 @@
 from .discovery_manager import DiscoveryManager
-from .models import DiscoverProfilesResponse, WhoLikesMeResponse, WhoPingsMeResponse
+from .models import DiscoverProfilesResponse, HeadSummariesResponse, WhoLikesMeResponse, WhoPingsMeResponse

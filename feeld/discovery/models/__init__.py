@@ -1,3 +1,5 @@
+from .device_location_update import DeviceLocationUpdateResponse
 from .discover_profiles import DiscoverProfilesResponse
+from .head_summaries import HeadSummariesResponse
 from .who_likes_me import WhoLikesMeResponse
 from .who_pings_me import WhoPingsMeResponse

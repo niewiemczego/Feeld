@@ -1,7 +1,9 @@
 import logging
-from typing import Any, Literal
+from typing import Literal
 
+from feeld.discovery.models.device_location_update import DeviceLocationUpdateResponse
 from feeld.discovery.models.discover_profiles import DiscoverProfilesResponse
+from feeld.discovery.models.head_summaries import HeadSummariesResponse
 from feeld.discovery.models.who_likes_me import WhoLikesMeResponse
 from feeld.discovery.models.who_pings_me import WhoPingsMeResponse
 from feeld.models.desires import DesiresType
@@ -14,6 +16,27 @@ class DiscoveryManager:
 
     def __init__(self, http_manager: HTTPManager) -> None:
         self._http_manager = http_manager
+
+    async def update_device_location(self, latitude: float, longitude: float) -> DeviceLocationUpdateResponse | None:
+        payload = {
+            "operationName": "DeviceLocationUpdate",
+            "variables": {"input": {"latitude": round(latitude, 3), "longitude": round(longitude, 3)}},
+            "query": "mutation DeviceLocationUpdate($input: DeviceLocationInput!) {\n  deviceLocationUpdate(input: $input) {\n    id\n    location {\n      device {\n        latitude\n        longitude\n        geocode {\n          city\n          country\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    profiles {\n      id\n      location {\n        ...ProfileLocationFragment\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ProfileLocationFragment on ProfileLocation {\n  ... on DeviceLocation {\n    device {\n      latitude\n      longitude\n      geocode {\n        city\n        country\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  ... on VirtualLocation {\n    core\n    __typename\n  }\n  ... on TeleportLocation {\n    current: device {\n      city\n      country\n      __typename\n    }\n    teleport {\n      latitude\n      longitude\n      geocode {\n        city\n        country\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  __typename\n}",
+        }
+
+        res = await self._http_manager._request(
+            "POST", self._http_manager._BASE_API_URL, self._http_manager._default_headers, json=payload
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to update device location - Unknown error[{res.status_code}]")
+            return None
+
+        return DeviceLocationUpdateResponse.parse_response(res.json())
 
     async def update_search_settings(
         self,
@@ -134,16 +157,43 @@ class DiscoveryManager:
 
         return DiscoverProfilesResponse.parse_response(res.json())
 
+    async def get_matches(self, limit: int = 10, next_page_cursor: str | None = None) -> HeadSummariesResponse | None:
+        payload = {
+            "operationName": "HeaderSummaries",
+            "variables": {"limit": limit} if next_page_cursor is None else {"limit": limit, "cursor": next_page_cursor},
+            "query": "query HeaderSummaries($limit: Int = "
+            + str(limit)
+            + ", $cursor: String) {\n  summaries: getChatSummariesForChatHeader(limit: $limit, cursor: $cursor) {\n    nodes {\n      ...ChatSummary\n      __typename\n    }\n    pageInfo {\n      hasNextPage\n      nextPageCursor\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ChatSummary on ChatSummary {\n  ...ChatSummaryItem\n  __typename\n}\n\nfragment ChatSummaryItem on ChatSummary {\n  id\n  name\n  type\n  status\n  avatarSet\n  memberCount\n  latestMessage\n  streamChannelId\n  targetProfileId\n  enableChatContentModeration\n  __typename\n}",
+        }
+        res = await self._http_manager._request(
+            "POST", self._http_manager._BASE_API_URL, self._http_manager._default_headers, json=payload
+        )
+        if res is None:
+            return None
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to get matches - Unknown error[{res.status_code}]")
+            return None
+
+        return HeadSummariesResponse.parse_response(res.json())
+
     async def get_likes(
-        self, sort_by: Literal["LAST_INTERACTION", "LAST_ONLINE", "DISTANCE"] = "LAST_INTERACTION"
+        self,
+        sort_by: Literal["LAST_INTERACTION", "LAST_ONLINE", "DISTANCE"] = "LAST_INTERACTION",
+        next_page_cursor: str | None = None,
     ) -> WhoLikesMeResponse | None:
         """
         Get users who liked you
+
         :param sort_by: Sort users by last interaction, last online or distance. Requires majestic membership to be able to sort by other than 'LAST_INTERACTION'
         """
         payload = {
             "operationName": "WhoLikesMe",
-            "variables": {"sortBy": sort_by},
+            "variables": {"sortBy": sort_by}
+            if next_page_cursor is None
+            else {"sortBy": sort_by, "cursor": next_page_cursor},
             "query": "query WhoLikesMe($limit: Int, $cursor: String, $sortBy: SortBy!) {\n  interactions: whoLikesMe(\n    input: {sortBy: $sortBy}\n    limit: $limit\n    cursor: $cursor\n  ) {\n    nodes {\n      ...LikesProfileFragment\n      __typename\n    }\n    pageInfo {\n      total\n      hasNextPage\n      nextPageCursor\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment LikesProfileFragment on Profile {\n  id\n  age\n  gender\n  status\n  lastSeen\n  isUplift\n  sexuality\n  isMajestic\n  isVerified\n  dateOfBirth\n  streamUserId\n  imaginaryName\n  interactionStatus {\n    message\n    mine\n    theirs\n    __typename\n  }\n  profilePairs {\n    identityId\n    __typename\n  }\n  distance {\n    km\n    mi\n    __typename\n  }\n  location {\n    ...ProfileLocationFragment\n    __typename\n  }\n  photos {\n    ...PhotoCarouselPictureFragment\n    __typename\n  }\n  __typename\n}\n\nfragment ProfileLocationFragment on ProfileLocation {\n  ... on DeviceLocation {\n    device {\n      latitude\n      longitude\n      geocode {\n        city\n        country\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  ... on VirtualLocation {\n    core\n    __typename\n  }\n  ... on TeleportLocation {\n    current: device {\n      city\n      country\n      __typename\n    }\n    teleport {\n      latitude\n      longitude\n      geocode {\n        city\n        country\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment PhotoCarouselPictureFragment on Picture {\n  id\n  pictureIsPrivate\n  pictureIsSafe\n  pictureStatus\n  pictureType\n  pictureUrl\n  publicId\n  __typename\n}",
         }
         res = await self._http_manager._request(
@@ -194,11 +244,17 @@ class DiscoveryManager:
         return WhoPingsMeResponse.parse_response(res.json())
 
     async def send_like(self, profile_id: str) -> bool:
+        # payload = {
+        #     "operationName": "ProfileLike",
+        #     "variables": {"targetProfileId": profile_id},
+        #     "query": "mutation ProfileLike($targetProfileId: String!) {\n  profileLike(input: {targetProfileId: $targetProfileId}) {\n    status\n    chat {\n      ...ChatListItemChatFragment\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ChatListItemChatFragment on Chat {\n  ...ChatFragment\n  __typename\n}\n\nfragment ChatFragment on Chat {\n  id\n  name\n  type\n  streamChatId\n  status\n  ...ChatSettingsChatFragment\n  members {\n    ...ChatMemberFragment\n    __typename\n  }\n  disconnectedMembers {\n    ...ChatMemberFragment\n    __typename\n  }\n  __typename\n}\n\nfragment ChatSettingsChatFragment on Chat {\n  id\n  __typename\n}\n\nfragment ChatMemberFragment on Profile {\n  id\n  status\n  analyticsId\n  imaginaryName\n  streamUserId\n  age\n  dateOfBirth\n  sexuality\n  isIncognito\n  ...ProfileInteractionStatusFragment\n  gender\n  photos {\n    ...GetPictureUrlFragment\n    pictureType\n    __typename\n  }\n  ...AnalyticsProfileFragment\n  __typename\n}\n\nfragment ProfileInteractionStatusFragment on Profile {\n  interactionStatus {\n    message\n    mine\n    theirs\n    __typename\n  }\n  __typename\n}\n\nfragment GetPictureUrlFragment on Picture {\n  id\n  publicId\n  pictureIsSafe\n  pictureIsPrivate\n  pictureUrl\n  __typename\n}\n\nfragment AnalyticsProfileFragment on Profile {\n  id\n  isUplift\n  lastSeen\n  age\n  gender\n  sexuality\n  distance {\n    km\n    mi\n    __typename\n  }\n  profilePairs {\n    identityId\n    __typename\n  }\n  __typename\n}",
+        # }
         payload = {
             "operationName": "ProfileLike",
             "variables": {"targetProfileId": profile_id},
-            "query": "mutation ProfileLike($targetProfileId: String!) {\n  profileLike(input: {targetProfileId: $targetProfileId}) {\n    status\n    chat {\n      ...ChatListItemChatFragment\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ChatListItemChatFragment on Chat {\n  ...ChatFragment\n  __typename\n}\n\nfragment ChatFragment on Chat {\n  id\n  name\n  type\n  streamChatId\n  status\n  ...ChatSettingsChatFragment\n  members {\n    ...ChatMemberFragment\n    __typename\n  }\n  disconnectedMembers {\n    ...ChatMemberFragment\n    __typename\n  }\n  __typename\n}\n\nfragment ChatSettingsChatFragment on Chat {\n  id\n  __typename\n}\n\nfragment ChatMemberFragment on Profile {\n  id\n  status\n  analyticsId\n  imaginaryName\n  streamUserId\n  age\n  dateOfBirth\n  sexuality\n  isIncognito\n  ...ProfileInteractionStatusFragment\n  gender\n  photos {\n    ...GetPictureUrlFragment\n    pictureType\n    __typename\n  }\n  ...AnalyticsProfileFragment\n  __typename\n}\n\nfragment ProfileInteractionStatusFragment on Profile {\n  interactionStatus {\n    message\n    mine\n    theirs\n    __typename\n  }\n  __typename\n}\n\nfragment GetPictureUrlFragment on Picture {\n  id\n  publicId\n  pictureIsSafe\n  pictureIsPrivate\n  pictureUrl\n  __typename\n}\n\nfragment AnalyticsProfileFragment on Profile {\n  id\n  isUplift\n  lastSeen\n  age\n  gender\n  sexuality\n  distance {\n    km\n    mi\n    __typename\n  }\n  profilePairs {\n    identityId\n    __typename\n  }\n  __typename\n}",
+            "query": "mutation ProfileLike($targetProfileId: String!) {\n  profileLike(input: {targetProfileId: $targetProfileId}) {\n    status\n    chat {\n      ...ChatListItemChatFragment\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ChatListItemChatFragment on Chat {\n  ...ChatFragment\n  __typename\n}\n\nfragment ChatFragment on Chat {\n  id\n  name\n  type\n  streamChatId\n  status\n  members {\n    ...ChatMemberFragment\n    __typename\n  }\n  disconnectedMembers {\n    ...ChatMemberFragment\n    __typename\n  }\n  __typename\n}\n\nfragment ChatMemberFragment on Profile {\n  id\n  status\n  analyticsId\n  imaginaryName\n  streamUserId\n  age\n  dateOfBirth\n  sexuality\n  isIncognito\n  ...ProfileInteractionStatusFragment\n  gender\n  photos {\n    ...GetPictureUrlFragment\n    pictureType\n    __typename\n  }\n  ...AnalyticsProfileFragment\n  __typename\n}\n\nfragment ProfileInteractionStatusFragment on Profile {\n  interactionStatus {\n    message\n    mine\n    theirs\n    __typename\n  }\n  __typename\n}\n\nfragment GetPictureUrlFragment on Picture {\n  id\n  publicId\n  pictureIsSafe\n  pictureIsPrivate\n  pictureUrl\n  __typename\n}\n\nfragment AnalyticsProfileFragment on Profile {\n  id\n  isUplift\n  lastSeen\n  age\n  gender\n  sexuality\n  verificationStatus\n  distance {\n    km\n    mi\n    __typename\n  }\n  profilePairs {\n    identityId\n    __typename\n  }\n  __typename\n}",
         }
+
         res = await self._http_manager._request(
             "POST", self._http_manager._BASE_API_URL, self._http_manager._default_headers, json=payload
         )
@@ -229,6 +285,30 @@ class DiscoveryManager:
         self._logger.debug(res.status_code)
         if res.status_code != 200 or "errors" in res.json():
             self._logger.error(f"Failed to send dislikes - Unknown error[{res.status_code}]")
+            return False
+
+        return True
+
+    async def send_ping(self, profile_id: str, message: str) -> bool:
+        payload = {
+            "operationName": "ProfilePing",
+            "variables": {
+                "targetProfileId": profile_id,
+                "message": message,
+                "overrideInappropriate": False,
+            },
+            "query": "mutation ProfilePing($targetProfileId: String!, $message: String, $overrideInappropriate: Boolean) {\n  profilePing(\n    input: {targetProfileId: $targetProfileId, message: $message, overrideInappropriate: $overrideInappropriate}\n  ) {\n    status\n    chat {\n      ...ChatListItemChatFragment\n      __typename\n    }\n    account {\n      id\n      availablePings\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ChatListItemChatFragment on Chat {\n  ...ChatFragment\n  __typename\n}\n\nfragment ChatFragment on Chat {\n  id\n  name\n  type\n  streamChatId\n  status\n  members {\n    ...ChatMemberFragment\n    __typename\n  }\n  disconnectedMembers {\n    ...ChatMemberFragment\n    __typename\n  }\n  __typename\n}\n\nfragment ChatMemberFragment on Profile {\n  id\n  status\n  analyticsId\n  imaginaryName\n  streamUserId\n  age\n  dateOfBirth\n  sexuality\n  isIncognito\n  ...ProfileInteractionStatusFragment\n  gender\n  photos {\n    ...GetPictureUrlFragment\n    pictureType\n    __typename\n  }\n  ...AnalyticsProfileFragment\n  __typename\n}\n\nfragment ProfileInteractionStatusFragment on Profile {\n  interactionStatus {\n    message\n    mine\n    theirs\n    __typename\n  }\n  __typename\n}\n\nfragment GetPictureUrlFragment on Picture {\n  id\n  publicId\n  pictureIsSafe\n  pictureIsPrivate\n  pictureUrl\n  __typename\n}\n\nfragment AnalyticsProfileFragment on Profile {\n  id\n  isUplift\n  lastSeen\n  age\n  gender\n  sexuality\n  verificationStatus\n  distance {\n    km\n    mi\n    __typename\n  }\n  profilePairs {\n    identityId\n    __typename\n  }\n  __typename\n}",
+        }
+        res = await self._http_manager._request(
+            "POST", self._http_manager._BASE_API_URL, self._http_manager._default_headers, json=payload
+        )
+        if res is None:
+            return False
+
+        self._logger.debug(res.text)
+        self._logger.debug(res.status_code)
+        if res.status_code != 200 or "errors" in res.json():
+            self._logger.error(f"Failed to send ping - Unknown error[{res.status_code}]")
             return False
 
         return True
@@ -309,12 +389,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
     http_manager = HTTPManager()
-    http_manager.access_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImEwODA2N2Q4M2YwY2Y5YzcxNjQyNjUwYzUyMWQ0ZWZhNWI2YTNlMDkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZjItcHJvZC01MzQ3NSIsImF1ZCI6ImYyLXByb2QtNTM0NzUiLCJhdXRoX3RpbWUiOjE3NDIxNTg2NjUsInVzZXJfaWQiOiJkclhTVnQ5Vm40YUpNaEV4ZVNYcGE5MldDNzcyIiwic3ViIjoiZHJYU1Z0OVZuNGFKTWhFeGVTWHBhOTJXQzc3MiIsImlhdCI6MTc0MjIzNDQ0MCwiZXhwIjoxNzQyMjM4MDQwLCJlbWFpbCI6ImpqZXJ6eWp1cmtvd3NraUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJqamVyenlqdXJrb3dza2lAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.b-ytvjrS2w76hkO3V8c0NWJlRDLui8sqx5LOiXE-yP5kpvezwXbdhBLl5VDVaeRPbtkNEUH63l-ePGRFAce4TdvI6CVPnMwla2jRE5qsfN63P-AsMV_Nn8xKDNxlrawHuxxuGfKTkRleZ8tIZ9I6PNMdvQ6Xl0nVTYIL3-AuoExOFZFOGFQ12Ng4Um_ocInMK2f2ZUlwV_kKMLu3PqOjNhd0laAP-C_dYgUSeo1PcyryzGOiYNA8gmegVSG8usXxNOllzqwdPpLnZ1O1lybIS3EbLIYFaaQrmyQNSGKIO0W1iHTdQ-3PC-w4bbOm7kX_uPmdPAkq5dJA5A4BSRTz3g"
-    http_manager.profile_id = "profile#3cbb7903-0289-466d-a6d8-0447dfed1021"
+    http_manager.access_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImE5ZGRjYTc2YzEyMzMyNmI5ZTJlODJkOGFjNDg0MWU1MzMyMmI3NmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZjItcHJvZC01MzQ3NSIsImF1ZCI6ImYyLXByb2QtNTM0NzUiLCJhdXRoX3RpbWUiOjE3NDI4MzkzNTAsInVzZXJfaWQiOiJpVEh1SEwwbkVmVHFEYlBCZXRIdk1Sd0U0aGoyIiwic3ViIjoiaVRIdUhMMG5FZlRxRGJQQmV0SHZNUndFNGhqMiIsImlhdCI6MTc0MzQzNzU5MywiZXhwIjoxNzQzNDQxMTkzLCJlbWFpbCI6ImouamVyenlqdXJrb3dza2lAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZW1haWwiOlsiai5qZXJ6eWp1cmtvd3NraUBnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJwYXNzd29yZCJ9fQ.bp-L3F5eILy2vS0F1RFnl8bKSwnVxAOuLigJH0Rfv7AVwoNi8TcAy8krS0ITFcv0EFTH7bhl07FRm2xA3G05jcjNd06QBVnQzNk1tIqnDcIZcFX697p8bEAIDLZPnAX7LgoPlT9HjqAGi2T8zp3PCakjmJtbJQLOSFv_m0R4IXMYHMGhGL0-gszUcLbG_R1OLxt05R3tYSsRO72GGJPe22iFyrphk3JHHvT6SdzERtbhi3BhCAoyhOec92tDMmXH5dayo7MUdqyKb-opjwYtD-tOb6H-cgajxar3lVBLFX1O0M7DsqWQJsVvffxK0HAxgudPymu1KQjGChlliwj3zQ"
+    http_manager.profile_id = "profile#bbaf281f-f77b-41a1-932c-1e150df54692"
 
     profile_manager = DiscoveryManager(http_manager)
 
     async def main() -> None:
-        profile_data = await profile_manager.update_search_settings([18, None])
+        likes = await profile_manager.get_likes()
+        print(len(likes.interactions.nodes))
 
     asyncio.run(main())
