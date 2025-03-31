@@ -10,7 +10,9 @@ class SignInResponse(BaseResponse):
     refresh_token: str | None = None
     expires_in: str | None = None
     local_id: str | None = None
+    user_id: str | None = None
     is_new_user: bool | None = None
+    project_id: str | None = None
 
     @classmethod
     def parse_response(cls, data: dict[str, Any]) -> "SignInResponse":
