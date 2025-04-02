@@ -42,7 +42,7 @@ class ProfileManager:
         popular_location: PopularLocation | None = None,
     ) -> ProfileLocationUpdateResponse | None:
         """
-        You need to provide either latitude and longitude or popular_location
+        You need to provide either `latitude` and `longitude` or `popular_location`
         """
         if not latitude and not longitude and not popular_location:
             self._logger.error("Failed to update profile location - No location provided")
