@@ -15,9 +15,8 @@ from feeld.networking.http_manager import HTTPManager
 class ChatManager:
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, http_manager: HTTPManager, stream_id: str) -> None:
+    def __init__(self, http_manager: HTTPManager) -> None:
         self._http_manager = http_manager
-        self._stream_id = stream_id
 
     async def get_chat_summaries(
         self, limit: int = 10, next_page_cursor: str | None = None
@@ -113,7 +112,7 @@ class ChatManager:
         """
         res = await self._http_manager._request(
             "GET",
-            f"{self._http_manager._BASE_CHAT_URL}/longpoll?user_id={self._stream_id}&api_key=y4tp4akjeb49&json=%7B%22user_id%22%3A%22{self._stream_id}%22%2C%22user_details%22%3A%7B%22id%22%3A%22{self._stream_id}%22%7D%7D",
+            f"{self._http_manager._BASE_CHAT_URL}/longpoll?user_id={self._http_manager._stream_id}&api_key=y4tp4akjeb49&json=%7B%22user_id%22%3A%22{self._http_manager._stream_id}%22%2C%22user_details%22%3A%7B%22id%22%3A%22{self._http_manager._stream_id}%22%7D%7D",
             headers=self._http_manager._default_headers_chat,
         )
         if res is None:
@@ -133,7 +132,7 @@ class ChatManager:
         payload = {"data": {}, "state": True, "watch": True, "presence": False, "messages": {"limit": limit}}
         res = await self._http_manager._request(
             "POST",
-            f"{self._http_manager._BASE_CHAT_URL}/channels/messaging/{user_stream_channel_id}/query?user_id={self._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
+            f"{self._http_manager._BASE_CHAT_URL}/channels/messaging/{user_stream_channel_id}/query?user_id={self._http_manager._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
             headers=self._http_manager._default_headers_chat,
             json=payload,
         )
@@ -303,6 +302,9 @@ class ChatManager:
     async def send_video_message(
         self, user_stream_channel_id: str, connection_id: str, video_path: str, message: VideoMessage
     ) -> dict[str, Any] | None:
+        """
+        Fun fact - you can send video longer than 15 seconds, they only limit it via app client
+        """
         url = await self.upload_video(user_stream_channel_id, connection_id, video_path)
         if url is None:
             return
@@ -322,7 +324,7 @@ class ChatManager:
         )
         res = await self._http_manager._request(
             "POST",
-            f"https://chat.stream-io-api.com/channels/messaging/{user_stream_channel_id}/file?user_id={self._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
+            f"https://chat.stream-io-api.com/channels/messaging/{user_stream_channel_id}/file?user_id={self._http_manager._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
             headers=self._http_manager._default_headers_chat | {"Content-Type": mp_encoder.content_type},
             data=mp_encoder.to_string(),
         )
@@ -342,7 +344,7 @@ class ChatManager:
     ) -> dict[str, Any] | None:
         res = await self._http_manager._request(
             "POST",
-            f"https://chat.stream-io-api.com/channels/messaging/{user_stream_channel_id}/message?user_id={self._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
+            f"https://chat.stream-io-api.com/channels/messaging/{user_stream_channel_id}/message?user_id={self._http_manager._stream_id}&connection_id={connection_id}&api_key=y4tp4akjeb49",
             headers=self._http_manager._default_headers_chat,
             json=message.to_payload_dict(),
         )
