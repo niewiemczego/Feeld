@@ -244,11 +244,6 @@ class DiscoveryManager:
         return WhoPingsMeResponse.parse_response(res.json())
 
     async def send_like(self, profile_id: str) -> bool:
-        # payload = {
-        #     "operationName": "ProfileLike",
-        #     "variables": {"targetProfileId": profile_id},
-        #     "query": "mutation ProfileLike($targetProfileId: String!) {\n  profileLike(input: {targetProfileId: $targetProfileId}) {\n    status\n    chat {\n      ...ChatListItemChatFragment\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ChatListItemChatFragment on Chat {\n  ...ChatFragment\n  __typename\n}\n\nfragment ChatFragment on Chat {\n  id\n  name\n  type\n  streamChatId\n  status\n  ...ChatSettingsChatFragment\n  members {\n    ...ChatMemberFragment\n    __typename\n  }\n  disconnectedMembers {\n    ...ChatMemberFragment\n    __typename\n  }\n  __typename\n}\n\nfragment ChatSettingsChatFragment on Chat {\n  id\n  __typename\n}\n\nfragment ChatMemberFragment on Profile {\n  id\n  status\n  analyticsId\n  imaginaryName\n  streamUserId\n  age\n  dateOfBirth\n  sexuality\n  isIncognito\n  ...ProfileInteractionStatusFragment\n  gender\n  photos {\n    ...GetPictureUrlFragment\n    pictureType\n    __typename\n  }\n  ...AnalyticsProfileFragment\n  __typename\n}\n\nfragment ProfileInteractionStatusFragment on Profile {\n  interactionStatus {\n    message\n    mine\n    theirs\n    __typename\n  }\n  __typename\n}\n\nfragment GetPictureUrlFragment on Picture {\n  id\n  publicId\n  pictureIsSafe\n  pictureIsPrivate\n  pictureUrl\n  __typename\n}\n\nfragment AnalyticsProfileFragment on Profile {\n  id\n  isUplift\n  lastSeen\n  age\n  gender\n  sexuality\n  distance {\n    km\n    mi\n    __typename\n  }\n  profilePairs {\n    identityId\n    __typename\n  }\n  __typename\n}",
-        # }
         payload = {
             "operationName": "ProfileLike",
             "variables": {"targetProfileId": profile_id},
@@ -380,22 +375,3 @@ class DiscoveryManager:
             return False
 
         return True
-
-
-if __name__ == "__main__":
-    import asyncio
-    import logging
-
-    logging.basicConfig(level=logging.DEBUG)
-
-    http_manager = HTTPManager()
-    http_manager.access_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImE5ZGRjYTc2YzEyMzMyNmI5ZTJlODJkOGFjNDg0MWU1MzMyMmI3NmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZjItcHJvZC01MzQ3NSIsImF1ZCI6ImYyLXByb2QtNTM0NzUiLCJhdXRoX3RpbWUiOjE3NDI4MzkzNTAsInVzZXJfaWQiOiJpVEh1SEwwbkVmVHFEYlBCZXRIdk1Sd0U0aGoyIiwic3ViIjoiaVRIdUhMMG5FZlRxRGJQQmV0SHZNUndFNGhqMiIsImlhdCI6MTc0MzQzNzU5MywiZXhwIjoxNzQzNDQxMTkzLCJlbWFpbCI6ImouamVyenlqdXJrb3dza2lAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZW1haWwiOlsiai5qZXJ6eWp1cmtvd3NraUBnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJwYXNzd29yZCJ9fQ.bp-L3F5eILy2vS0F1RFnl8bKSwnVxAOuLigJH0Rfv7AVwoNi8TcAy8krS0ITFcv0EFTH7bhl07FRm2xA3G05jcjNd06QBVnQzNk1tIqnDcIZcFX697p8bEAIDLZPnAX7LgoPlT9HjqAGi2T8zp3PCakjmJtbJQLOSFv_m0R4IXMYHMGhGL0-gszUcLbG_R1OLxt05R3tYSsRO72GGJPe22iFyrphk3JHHvT6SdzERtbhi3BhCAoyhOec92tDMmXH5dayo7MUdqyKb-opjwYtD-tOb6H-cgajxar3lVBLFX1O0M7DsqWQJsVvffxK0HAxgudPymu1KQjGChlliwj3zQ"
-    http_manager.profile_id = "profile#bbaf281f-f77b-41a1-932c-1e150df54692"
-
-    profile_manager = DiscoveryManager(http_manager)
-
-    async def main() -> None:
-        likes = await profile_manager.get_likes()
-        print(len(likes.interactions.nodes))
-
-    asyncio.run(main())

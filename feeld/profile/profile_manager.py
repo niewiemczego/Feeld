@@ -172,19 +172,3 @@ class ProfileManager:
             return False
 
         return True
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    http_manager = HTTPManager()
-    http_manager.access_token = "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImEwODA2N2Q4M2YwY2Y5YzcxNjQyNjUwYzUyMWQ0ZWZhNWI2YTNlMDkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZjItcHJvZC01MzQ3NSIsImF1ZCI6ImYyLXByb2QtNTM0NzUiLCJhdXRoX3RpbWUiOjE3NDIxNTg2NjUsInVzZXJfaWQiOiJkclhTVnQ5Vm40YUpNaEV4ZVNYcGE5MldDNzcyIiwic3ViIjoiZHJYU1Z0OVZuNGFKTWhFeGVTWHBhOTJXQzc3MiIsImlhdCI6MTc0MjE3MDU0NywiZXhwIjoxNzQyMTc0MTQ3LCJlbWFpbCI6ImpqZXJ6eWp1cmtvd3NraUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJqamVyenlqdXJrb3dza2lAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.iSGD9jXaaGCWoVz5jB6lVCZESw4yTteQ-0huiFpLIteaGZlbRFfCinfBm6jvWNTS7HqsgtvqYEDUc6y7s7sFg_kBDaLvkRzb_XYrzt5RWQRtkArEVZ28o7YKk5D1r27GkS50FUcEfCXbgAJydlygkEDOJVTycABiHV5VrHwDWfuZ49Lf6qZ1KBuIJ88oBshHcO1LodjXybdVfDhD2pSSZgA8K2pDJlAQl_egMwWdqcOKxYZWxZ7HE7C9U8WqOPMmFSdv4seoTZGNHUPRbcm85iw5pWaSsVimY-3HrHbLBESrVvrrU0FjyKosDKVnfGAqSE6x480DIYSLiUumbVqgvg"
-    http_manager.profile_id = "profile#3cbb7903-0289-466d-a6d8-0447dfed1021"
-
-    profile_manager = ProfileManager(http_manager)
-
-    async def main():
-        profile_data = await profile_manager.get_profile_data()
-        print(profile_data)
-
-    asyncio.run(main())

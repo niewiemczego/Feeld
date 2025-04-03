@@ -194,7 +194,7 @@ class ChatManager:
 
         return GenerateUploadCredentialsResponse.parse_response(res.json())
 
-    async def upload_attachment(
+    async def _upload_attachment(
         self, upload_credentials: GenerateUploadCredentialsResponse, image_path: str
     ) -> dict[str, Any] | None:
         mp_encoder = MultipartEncoder(
@@ -229,7 +229,7 @@ class ChatManager:
 
         return res.json()
 
-    async def upload_attachment_to_chat(
+    async def _upload_attachment_to_chat(
         self, chat_id: str, public_id: str, visibility_in_ms: int | None = None
     ) -> UploadChatAttachmentResponse | None:
         payload = {
@@ -270,7 +270,7 @@ class ChatManager:
         self, user_stream_channel_id: str, connection_id: str, image_path: str, chat_id: str, message: ImageMessage
     ) -> bool:
         visibility_in_ms = message.playable_duration * 1000 if message.playable_duration else message.playable_duration
-        upload_image_data = await self.upload_image(image_path, chat_id, visibility_in_ms)
+        upload_image_data = await self._upload_image(image_path, chat_id, visibility_in_ms)
         if upload_image_data is None:
             return False
 
@@ -282,18 +282,18 @@ class ChatManager:
 
         return True
 
-    async def upload_image(
+    async def _upload_image(
         self, image_path: str, chat_id: str, visibility_in_ms: int | None = None
     ) -> UploadChatAttachmentResponse | None:
         credentials = await self.generate_upload_credentials_for_attachment()
         if credentials is None:
             return None
 
-        upload_attachment_data = await self.upload_attachment(credentials, image_path)
+        upload_attachment_data = await self._upload_attachment(credentials, image_path)
         if upload_attachment_data is None:
             return None
 
-        upload_to_chat = await self.upload_attachment_to_chat(chat_id, credentials.data.public_id, visibility_in_ms)
+        upload_to_chat = await self._upload_attachment_to_chat(chat_id, credentials.data.public_id, visibility_in_ms)
         if upload_to_chat is None:
             return None
 
@@ -305,7 +305,7 @@ class ChatManager:
         """
         Fun fact - you can send video longer than 15 seconds, they only limit it via app client
         """
-        url = await self.upload_video(user_stream_channel_id, connection_id, video_path)
+        url = await self._upload_video(user_stream_channel_id, connection_id, video_path)
         if url is None:
             return
 
@@ -316,7 +316,7 @@ class ChatManager:
 
         return await self._send_message_to_chat(user_stream_channel_id, connection_id, message)
 
-    async def upload_video(self, user_stream_channel_id: str, connection_id: str, video_path: str) -> str | None:
+    async def _upload_video(self, user_stream_channel_id: str, connection_id: str, video_path: str) -> str | None:
         mp_encoder = MultipartEncoder(
             fields={
                 "file": (video_path.split("/")[-1], open(video_path, "rb"), get_file_content_type(video_path)),
