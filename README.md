@@ -35,13 +35,8 @@ pip install -r requirements.txt
 - [ ] Update some endpoints to always return data instead of True/False to allow user-defined handling (?)
 
 
-## TODO (Future) - not sure if I will do it due to security reasons
-- [ ] Creating(sign-up) accounts module (related to SeonSDK)
-- [ ] Login(sign-in) possibility with email and password (related to SeonSDK)
-- [ ] SeonSDK fingerprint support (used during sign-up / sign-in)
-
-
-
+## Signin / Signup
+Due to security reasons, I will not be open-sourcing the login and registration solution. Both components rely on specific, highly encrypted data that acts as a fingerprint. However, I offer two options: you can purchase this part of the solution (availability is limited), or you can rent access to my API, which will generate the required data/fingerprint for you, allowing for easy integration. For a trial, please check [contact](#contact) section.
 
 ## Usage
 
