@@ -31,7 +31,7 @@ class HTTPManager:
             "x-profile-id": self._profile_id,
             "x-device-os": "ios",
             "user-agent": "feeld-mobile",
-            "x-app-version": "7.23.0",
+            "x-app-version": "7.25.0",
         }
         self._default_headers_chat = {
             "accept-language": "en-GB,en;q=0.9",
