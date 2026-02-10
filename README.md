@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 
 ## Signin / Signup
-Due to security reasons, I will not be open-sourcing the login and registration solution. Both components rely on specific, highly encrypted data that acts as a fingerprint. However, I offer two options: you can purchase this part of the solution (availability is limited), or you can rent access to my API, which will generate the required data/fingerprint for you, allowing for easy integration. For a trial, please check [contact](#contact) section.
+I do **NOT** provide any solution for register/login, do **NOT** contact me regarding that topic. Thanks.
 
 ## Usage
 
